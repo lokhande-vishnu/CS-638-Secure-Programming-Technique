@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Command-Line Text Editors</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<div class="wrapper">
+		<h1>Command-Line Text Editors</h1>
+		<p>
+			In many of these exercises, we interact with programs exclusively through the command line. When it comes time to edit a source file or read an output file, it is cumbersome to switch attention to a GUI and navigate to the current directory just to open a file. Instead, we use a command-line text editor to interact with text files without leaving the command line shell. Before the widespread adoption of GUI environments, these text editors were the only option. Nearly all distributions of Linux still include at least one of these editors by default.
+		</p>
+
+		<h2>Nano</h2>
+		<p>
+			If you've never used a command-line text editor and don't plan on using one often, <a href="https://www.nano-editor.org/dist/v2.9/nano.html">Nano</a> is likely your best choice. It is great for small edits and fast changes. It is included in many Linux distributions (including the security exercises virtual machine).
+		</p>
+
+		<p>
+			To read or edit a file named <code>myFile</code> using nano, simply enter the command <code>nano myFile</code> in the shell. Commands are listed at the bottom in the form of <code>^X Exit</code>. This means press the <code>ctrl</code> key and the <code>x</code> key simultaneously to exit the file. It will ask if you want to save your modifications (if you made any).
+		</p>
+
+		<h2>Vim</h2>
+		<p>
+			Another simple text editor to consider is <a href="https://www.linux.com/learn/vim-101-beginners-guide-vim">Vim</a>, which is included with nearly every Linux distribution. This is a slightly more powerful/customizable text-editor compared to Nano. Note that it is a "mode-based" editor, so you will have different commands/options depending on your current mode.
+		</p>
+
+		<p>
+			Similar to Nano, you can open a file named <code>myFile</code> by typing <code>vim myFile</code>. First press the <code>i</code> key to switch into "insert mode". Now you can navigate the document using the arrow keys and make changes to the code. When you are done editing, press the <code>esc</code> key to leave "insert mode", then type <code>:wq</code> to "write and quit" (i.e., "save and exit"). If you don't wish to save, type <code>:q!</code> instead of <code>:wq</code>.
+		</p>
+	</div>
+</body>
+</html>

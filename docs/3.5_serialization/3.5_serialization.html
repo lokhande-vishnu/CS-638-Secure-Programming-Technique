@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Serialization Vulnerability</title>
+		<link rel="stylesheet" href="../style.css">
+	</head>
+	<body>
+		<div class="wrapper">
+			<h1>Serialization Vulnerability</h1>
+			<div class="navlinks">
+				<ul class="horizontal">
+					<li><a href="../index.html">Home</a></li>
+				</ul>
+			</div>
+
+			<h2 id="introduction">Introduction</h2>
+			<p>
+				Serialization is a technique to convert in-memory data structures into a stable byte representation that can later be converted back into an equivalent in-memory structure. This is most often used for transmitting data over a network or persistently storing program state. While serialization and deserialization offer a powerful tool for abstraction, they can contain dangerous vulnerabilities when applied to untrusted data. See <a href="http://research.cs.wisc.edu/mist/SoftwareSecurityCourse/Chapters/3.5-Serialization.pdf">Chapter 3.5 on Serialization</a> for more information on general serialization security concerns.
+			</p>
+
+			<h3 id="description">Exercise Description</h3>
+			<p>
+				For this exercise, we provide a simple server and client that communicate serialized strings over socket connections. This is to emulate a situation in which some server deserializes data from an untrusted client. For example, consider a situation in which you write and distribute a Python program that sends some serialized program state along with a bug report. Since the client program can be trivially reverse engineered, an attacker can send any serialized data to your server.
+			</p>
+
+			<p>
+				The program for this exercise uses Python's pickle library to serialize an object, send it to our server, deserialize the object, and print its value. Serialization (pickling) in Python works in an interesting, flexible, and somewhat complicated way. The pickled object is actually a pair of fields. The first field is a callable object (basically a function name) and the second is a tuple of the data elements to be passed as arguments to that method. The Python method <code>pickle.dumps(...)</code> internally calls the object's <code>__reduce__(self)</code> method, which returns this pair of fields. These two fields are sent to the recipient, who deserializes (unpickles) it by calling the method, passing it the arguments in the tuple. The result of this call is the deserialized object. Our implementation of this server is in three Python files, described below. Your objective is to change the client such that deserializing the malicious object will execute arbitrary shell commands on the server.
+			</p>
+
+			<table>
+				<tr>
+					<th>Filename</th>
+					<th>Purpose</th>
+				</tr>
+				<tr>
+					<td><code>codec.py</code></td>
+					<td>This file defines two trivial functions to convert a string object into a byte representation. This must be in a separate file because the client and server must be using consistent encoding/decoding mechanisms. <b>You will not need to change this file.</b></td>
+				</tr>
+				<tr>
+					<td><code>server.py</code></td>
+					<td>This file implements our simple server, which listens for socket connections and deserializes the data it receives. It expects to deserialize a string using the functions defined in our codec. <b>You will change this file</b> as a part of mitigating the vulnerability.</td>
+				</tr>
+				<tr>
+					<td><code>client.py</code></td>
+					<td>This file implements a "good" client that connects to our server. It serializes our "surprise" object by overriding the <code>__reduce__(self)</code> method and sends that serialized data to our server. The override for <code>__reduce__(self)</code> simply calls our <code>myEncode</code> function on a member string, uses this as the single argument in our data tuple, and specifies <code>myDecode</code> as the deserialization function. <b>You will change this file</b> to create your exploit and again as a part of mitigating the vulnerability.</td>
+				</tr>
+			</table>
+
+			<h3 id="mitigation_description">Vulnerability Mitigation</h3>
+			<p>
+				There are many considerations when trying to mitigate serialization vulnerabilities. The <a href="http://research.cs.wisc.edu/mist/SoftwareSecurityCourse/Chapters/3.5-Serialization.pdf">text</a> covers some of these general concepts. For this exercise, we will mitigate the vulnerability by restricting which methods can be called by the unpickling process. The Python <a href="https://docs.python.org/2.7/library/pickle.html">pickle documentation</a> describes this mechanism in more detail. Your objective will be to implement this restriction such that only our expected decoding methods are possible to invoke. Note that it is still important that we consider the data to be untrusted. For example, imagine we are populating an object that contains a "privilege" field; we must deliberately prevent an attacker from specifying an unauthorized privilege.
+			</p>
+
+			<p>
+				In the case of this exercise, restricting the available methods may sufficiently mitigate the vulnerability. However, in many cases, it is preferred to avoid serialization of untrusted data altogether. For example, instead of serializing an object from a client, we might send only the necessary information in primitive values (ensuring that each value is validated and sanitized). This is often more secure <em>and more computationally efficient</em> than object serialization. Another option is to use general data formats such as <a href="https://www.json.org/">JSON</a> or <a href="http://yaml.org/">YAML</a> and libraries to convert object members to those formats. For example, the third-party <a href="https://github.com/yaml/pyyaml">PyYAML</a> for Python has a <code>safe_load</code> method that can conveniently do these conversions.
+			</p>
+
+			<h2 id="instructions">Exercise Instructions</h2>
+			<p>
+				This exercise will be completed entirely on the command line terminal of the provided virtual machine. To open the terminal, right-click on the "EXERCISES" directory and select "Open in Terminal". Enter the following command to change into the exercise directory:
+			</p>
+
+			<pre><code>$ cd 3.5_serialization</code></pre>
+
+			<p>
+				You will need <b>two shell windows</b> for this exercise, one for the server and one for the client. Perform the above two actions twice.
+			</p>
+			
+			<h3 id="run" class="steps">Run the Program</h3>
+			<p>
+				To run this program, you will need to first start the server in one shell window. Enter the following command in one of your shell windows:
+			</p>
+
+			<pre><code>$ python server.py</code></pre>
+
+			<p>
+				The server will continue to run until you press <code>ctrl + C</code> in the server's shell window.
+			</p>
+
+			<p>
+				The client program takes an optional argument string, which is effectively the string that is sent to the server. With the server running in one window, switch to your other shell window and enter the following command:
+			</p>
+
+			<pre><code>$ python client.py "my message"</code></pre>
+
+			<p>
+				You should see some output in both your server and your client shell windows. The server will output the string that our client sent (namely "my message" in this case) and the client will output the serialized data along with the response string from the server.
+			</p>
+
+			<h3 id="inspect" class="steps">Inspect the Program Code</h3>
+			<p>
+				Now that you understand the basic operation of our client-server program, it's time to look at the implementation to find our attack vector. A good place to start is in <code>server.py</code>. Use your favorite <a href="../text_editors.html">text editor</a> to open this file. Enter the following command to open it in Nano:
+			</p>
+
+			<pre><code>$ nano server.py</code></pre>
+
+			<p>
+				First familiarize yourself with the general flow of data into the server. The server endlessly waits for new socket connections. When one is accepted, the server forks (creates a new process). The parent process, our original server process, waits for another thread while the child process, the newly forked process, handles data coming into the opened socket. Once you have a clear understanding of where our incoming data is processed, move onto the client program.
+			</p>
+
+			<p>
+				Open the <code>client.py</code> file and follow the execution path of the program. You should see that it creates a "surprise" object, sets the member string, serializes the object, and sends it over the wire. We know that <code>pickle.dumps</code> will internally call the <code>__reduce__(self)</code> method of our object. Note that the override of <code>__reduce__(self)</code> "encodes" the string using our <code>codec</code> function and specifies the <code>myDecode</code> function as the function to deserialize the object.
+			</p>
+
+			<h3 id="exploit" class="steps">Exploit the Vulnerability</h3>
+			<p>
+				We now have a clear attack vector to the unprotected deserialization method of the vulnerable server. It's time to exploit it. Using what you've learned above, try to change our "surprise" object so that it runs an shell command when the server deserializes it. In a real attack, you can be very creative in the destructive potential of this vulnerability, from destroying file system trees to installing malware, but we recommend something innocuous like <code>echo ATTACK_SUCCESS</code> for this exercise. Run the server and make changes to <code>client.py</code>. When you run your malicious client, you should be able to see the output from your shell command in the server command line interface. Come back when you are successful or stuck.
+			</p>
+
+			<p>
+				If you are stuck, start by thinking of what function you want the <code>pickle.loads</code> to call. For example, what function do we call in Python to execute a shell command? Next, you need to construct the argument to that function call. What do you pass into that function to execute the command <code>echo ATTACK_SUCCESS</code>? Finally, how do we specify this function name and arguments in our malicious client? Try again to run your exploit by editing and running the <code>cient.py</code> program. Come back when you are successful or stuck.
+			</p>
+
+			<p>
+				If you're still stuck, take a look at the <a href="https://docs.python.org/2/library/os.html#os.system"><code>os.system</code></a> documentation. Now, consider the <code>__reduce__(self)</code> method, and determine what two items must be replaced by the <code>os.system</code> method and the command argument.
+			</p>
+
+			<p>
+				Once you see the "ATTACK_SUCCESSFUL" appear in your server command line, you've officially exploited the serialization vulnerability!
+			</p>
+
+			<p><em>
+				Note: This exploit is different from simply encoding the string "ATTACK_SUCCESSFUL" by, for example, running <code>python client.py "ATTACK_SUCCESSFUL"</code> because it invokes the <code>os.system</code> function. You can tell this is the case, because you will see the "ATTACK_SUCCESSFUL" string <b>before</b> the print statement saying "Server Received: 0".
+			</em></p>
+			
+			<h3 id="mitigate" class="steps">Mitigate the Vulnerability</h3>
+			<p>
+				Our exploit works because Python's deserialization can invoke arbitrary functions. An intuitive solution is to allow only the functions we expect to encounter and block all other functions. Luckily, Python's pickle API has a convenient way to do this. The following example is taken from the <a href="https://docs.python.org/3.1/library/pickle.html#restricting-globals">Restricting Globals section of Python's pickle API</a>. Note that this example is for Python 3.1. We are using Python 2.7, but this example will still work.
+			</p>
+
+			<pre><code>import builtins
+import io
+import pickle
+
+safe_builtins = {
+	'range',
+	'complex',
+	'set',
+	'frozenset',
+	'slice',
+}
+
+class RestrictedUnpickler(pickle.Unpickler):
+
+	def find_class(self, module, name):
+		# Only allow safe classes from builtins.
+		if module == "builtins" and name in safe_builtins:
+			return getattr(builtins, name)
+		# Forbid everything else.
+		raise pickle.UnpicklingError("global '%s.%s' is forbidden" %
+									 (module, name))
+
+def restricted_loads(s):
+	"""Helper function analogous to pickle.loads()."""
+	return RestrictedUnpickler(io.BytesIO(s)).load()</code></pre>
+
+		<p>
+			This example works by overriding the <code>pickle.Unpickler.find_class</code> method. The <code>find_class</code> method is how the <code>loads</code> method finds the function specified by our serialized data. For example, when we specify <code>os.system</code>, the <code>find_class</code> is responsible for returning the correct function. Notice that the class <code>RestrictedUnpickler</code> is a child class of the <code>Unpickler</code> class, so instead of calling <code>pickle.loads(payload)</code>, we must first create an instance of our <code>RestrictedUnpickler</code> then call <code>load</code>. The constructor for <code>Unpickler</code> is implemented to work on data streams, so we must convert our payload to a byte stream. Below is the equivalent to <code>pickle.loads(payload)</code>.
+		</p>
+
+		<pre><code>myUnpickler = RestrictedUnpickler(io.BytesIO(payload))
+message = myUnpickler.load()</code></pre>
+
+		<p>
+			With this information, you can now mitigate the vulnerability in our <code>server.py</code> program. First, you must decide which functions should be available. In our example, there should be only one possible deserialization method. Implement the restricted unpickler class in <code>server.py</code> and test to make sure the vulnerability is mitigated. You may have to go through several iterations of implementing a fix (debugging), running the server, testing good inputs to ensure the program still works, and testing bad inputs to ensure the vulnerability is mitigated. Remember that you have to restart the server to test changes in <code>server.py</code>. Come back when you are successful or stuck.
+		</p>
+
+		<p>
+			If you're stuck, take a look at the example above and determine what needs to be replaced for our specific program. In the example, the only module allowed is "builtins" and the only functions allowed are specified in <code>safe_builtins</code>. For our program, we want to only allow the <code>codec.myDecode</code> method. Replace the necessary items in <code>safe_builtins</code> and <code>find_class</code>.
+		</p>
+
+		<p>
+			Once you see something like "global 'os.system' is forbidden" instead of "ATTACK_SUCCESS", then you've mitigated the vulnerability. For extra security, you could even catch the UnpicklingError to handle this case. Congratulations! You've mitigated a serialization vulnerability!
+		</p>
+
+		</div>
+	</body>
+</html>

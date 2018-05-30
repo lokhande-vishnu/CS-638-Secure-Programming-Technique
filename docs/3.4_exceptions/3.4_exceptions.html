@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Exception Handling Vulnerability</title>
+		<link rel="stylesheet" href="../style.css">
+	</head>
+	<body>
+		<div class="wrapper">
+			<h1>Exception Handling Vulnerability</h1>
+			<div class="navlinks">
+				<ul class="horizontal">
+					<li><a href="../index.html">Home</a></li>
+				</ul>
+			</div>
+
+			<h2 id="introduction">Introduction</h2>
+			<p>
+				Exceptions are a control flow mechanism used to handle and propagate errors. Some form of these mechanisms exist in nearly every modern programming language. When a programmer writes code that may throw an exception, improper handling of that exception can cause the program to crash (effecting a denial of service), reveal information that is valuable to an attacker, or result in partially changed state (where the changes made immediately before the error are not reverted). See the chapter on <a href="http://research.cs.wisc.edu/mist/SoftwareSecurityCourse/Chapters/3_4-Exceptions.pdf">Exceptions</a> for more details on exception-related vulnerabilities.
+			</p>
+
+			<h3 id="description">Exercise Description</h3>
+			<p>
+				In this exercise, we provide a very simple program that checks for a given username and password in a portable SQLite database. If a correct username and password is given, then the program will display a welcome message. If an incorrect password or nonexistent username is supplied, the program will display a failure message. Your objective is to trigger exceptions in several ways to cause the program to crash, cause the program to leak information about our database access, and cause the program to trigger a "correct" login without credentials.
+			</p>
+
+			<p><em>
+				Note: This program violates several best practices regarding password storage, credential management, authentication, etc., but you should focus on the exceptions for this exercise. You will see this sample again in <a href="../3.8.1_sql_injections/3.8.1_sql_injections.html">3.8.1 SQL Injections</a>.
+			</em></p>
+
+			<h3 id="mitigation_description">Vulnerability Mitigation</h3>
+			<p>
+				Proper exception handling includes many best practices. For this exercise, we will add conditions to handle exceptions that would crash the program, remove details from our error messages, and change the logic of our login method to appropriately deny input that causes an exception. The chapter on <a href="http://research.cs.wisc.edu/mist/SoftwareSecurityCourse/Chapters/3_4-Exceptions.pdf">Exceptions</a> covers more of these mitigation practices.
+			</p>
+
+			<h2 id="instructions">Exercise Instructions</h2>
+			<p>
+				This exercise will be completed entirely on the command line terminal of the provided virtual machine. To open the terminal, right-click on the "EXERCISES" directory and select "Open in Terminal". Enter the following command to change into the exercise directory:
+			</p>
+
+			<pre><code>$ cd 3.4_exceptions</code></pre>
+
+			<h3 id="compile" class="steps">Compile the Program</h3>
+			<p>
+				We provide a Makefile that will compile the program. Every time you change the <code>Main.java</code> file, you must recompile the program before running it again. Enter the following command to compile the program:
+			</p>
+
+			<pre><code>$ make</code></pre>
+
+			<p>
+				If you have edited the <code>Main.java</code> file and it contains compiler errors, the make command will fail and show you where the errors were found.
+			</p>
+			
+			<h3 id="run" class="steps">Run the Program</h3>
+			<p>
+				The next step is to run the program and test some inputs. To execute the program after compiling, enter the following command:
+			</p>
+			
+			<pre><code>$ java Main</code></pre>
+
+			<p>
+				You should see output from the program prompting for a username. Type a username and press enter. The program will then prompt you for a password. Type a password and press enter. To ease exploitation, the password field will not be hidden. The program will check the SQLite database for the username/password combination and tell you if the login was successful. The following is an example of a correct username/password input:
+			</p>
+
+			<pre><code>username: some_guy
+password: his_password
+Login Successful! Welcome some_guy</code></pre>
+
+			<p>
+				Try this a few times with different usernames and passwords to see how the program behaves. You may even want to try some inputs that you think might break the program, but we will focus on this more later. To exit the program, type <code>exit</code> in place of a username. All of the "correct" username and password combinations can be found in <code>create_db.sql</code>, which the Makefile uses to generate the database.
+			</p>
+
+			<h3 id="inspect" class="steps">Inspect the Program Code</h3>
+			<p>
+				Now that you understand the basic behavior of the program (and maybe even an input that breaks it), you should take a look at the implementation in <code>Main.java</code>. Use your favorite <a href="../text_editors.html">text editor</a> to open this file. Enter the following command to open the file in Nano:
+			</p>
+
+			<pre><code>$ nano Main.java</code></pre>
+
+			<p>
+				Look through the code first to understand the basic control flow and logic. Once you can follow the program logic, focus on the <code>checkPW</code> method to understand the purpose of the <code>catch</code> blocks. Begin thinking about what exceptions the program might <em>not</em> be handling correctly or at all. An important note to remember is that Unchecked Exceptions do not need to be "caught" whereas Checked Exceptions (like the <code>SQLException</code>) must be within a try-catch block. Some examples of unchecked exceptions are <code>NullPointerException</code>, <code>ClassCastException</code>, <code>IllegalArgumentException</code>, and <code>ArrayIndexOutOfBoundsException</code>.
+			</p>
+
+			<p>
+				After looking at the code, you might be thinking that you will need to trigger a <code>SQLException</code>. You would be right. Find an attack vector from the user's input at the terminal to one of the method calls that can throw a <code>SQLException</code>. Specifically, find which method within the try block has an argument containing the user's input.
+			</p>
+			
+			<h3 id="exploit" class="steps">Exploit the Vulnerability</h3>
+			<p>
+				 Now that you know where your input can reach the exception-throwing code, it's time to cause an exception. <a href="#run">Run the program</a> again and test inputs that you think will cause an exception. Come back when you're successful or stuck.
+			</p>
+
+			<p>
+				If you're stuck, consider that the most common <code>SQLException</code> probably comes from invalid SQL statement syntax. The attack vector puts the user's input between single quotes in two places. What might happen if the input contains single quotes? Try some more inputs with this in mind and return here when you see an error message.
+			</p>
+
+			<p>
+				When you successfully trigger a <code>SQLException</code>, you will see that it also causes a <code>NullPointerException</code>! Congratulations, you've exploited an exception handling vulnerability to crash the program <em>and</em> reveal sensitive information about the SQL query! If this was a network service, you would have caused a successful denial of service attack. The information you revealed about the SQL query will be very useful for a potential <a href="../3.8.1_sql_injections/3.8.1_sql_injections.html">SQL Injection</a> attack.
+			</p>
+
+			<p>
+				Before continuing to the mitigation, <a href="#inspect">inspect the code</a> again to understand why we got a <code>NullPointerException</code> in addition to the <code>SQLException</code> that we were expecting. When the SQL statement fails, the code jumps into the catch block <em>without assigning the SQL object variables</em>. After printing the debugging information, the code continues to "cleanup" the SQL objects by calling the <code>close</code> method on each of them. The checked <code>SQLException</code> forces the programmer to address it, but this program ignores the possibility of a <code>NullPointerException</code>. Since the <code>results</code> variable isn't assigned until after the point where our code failed, it is still <code>null</code> by the time our code calls <code>results.close()</code>.
+			</p>
+			
+			<h3 id="mitigate" class="steps">Mitigate the Vulnerability</h3>
+			<p>
+				Your exploit above revealed two problems with exception handling in this program: an unhandled <code>NullPointerException</code> that crashes the program and a <code>SQLException</code> that reveals information about the program and database structure.
+			</p>
+
+			<p>
+				First, mitigate the <code>NullPointerException</code> problem. This should be fairly simple because a <code>null</code> SQL object does not need to be closed. Two possible options are by checking that each object is not <code>null</code> before closing it or by catching the <code>NullPointerException</code> and ignoring it. Fixing this issue is simple on the surface, but there is an unsolved discussion underlying the consequences of ignoring exceptions. <em>Note that checking for the <code>null</code> object is logically equivalent to ignoring the <code>NullPointerException</code></em>. Because a programmer has no way of knowing exactly what future situations may cause the exception, it would be unwise to ignore it entirely. However, since the programmer can expect that the common cause of this exception is a result of the previous code failing, it would be unnecessary to count ever failure twice. For this exercise, it is sufficient to ignore the exception (primarily because it has no logging framework), but it is important to take special care whenever considering the option to ignore an exception.
+			</p>
+
+			<p>
+				Next, you will mitigate the information leak in our <code>SQLException</code> handling. It is very common for programmers to accidentally leave sensitive debugging information in production code. Before mitigating the vulnerability in this exercise, we will cover some background on error logging. The best practice is to log errors in a safe place using some logging framework like <a href="https://logging.apache.org/log4j/2.x/">Log4j</a>. This may be a secure log file, a remote logging server, or some other safe system for recording the information. An important note is to never log private user information like passwords, personally identifiable information, credit card numbers, etc. Instead, you should log the relevant program state. The user will never see this logged information. Instead, you should display a generic error message to the user. In more advanced systems, you may even include a reference number (also recorded in the log file) that a user can give to a support team to find details about the error. For more information on related practices, see the chapter on <a href="http://research.cs.wisc.edu/mist/SoftwareSecurityCourse/Chapters/3_4-Exceptions.pdf">Exceptions</a>. For this exercise, there is no logging framework, so you can simply report the generic error to the user on the error stream.
+			</p>
+
+			<p>
+				Implement these fixes in <code>Main.java</code>. Don't forget to compile the program using the <code>make</code> command every time you change the source file. Run the program with the <code>java Main</code> command and test your implementation. First test that the correct program behavior is unchanged (i.e., correct username and password combinations succeed and incorrect username and password combinations fail). You may have to repeat this process several times to get the program to compile and run correctly. Now test your previous exploit input. You should see the generic error message that you report in the <code>SQLException</code> catch block when you are successful.
+			</p>
+
+			<p>
+				Now there's another problem! Your output should also show that the login was successful! Once again, you are experiencing the tendency of error handling problems to cascade, hiding and revealing other errors. This is a <em><b>third</b></em> problem with error handling that your exploit only revealed after fixing the <code>NullPointerException</code> problem. Like the problem with the <code>NullPointerException</code>, this is caused by neglecting the case where the code fails before setting a variable to its appropriate state. In this case, the default return value is <code>true</code>. Edit the logic so the function always returns false unless the SQL query executes successfully <em>and</em> the count is correct.
+			</p>
+
+			<p>
+				Implement this fix and repeat the same testing procedure as before. This time, continue until none of your inputs cause a successful login message except correct username and password combinations. <em>Note that a <a href="../3.8.1_sql_injections/3.8.1_sql_injections.html">SQL Injection</a> is still possible, but you can ignore this until the injection exercise.</em>
+			</p>
+
+			<p>
+				Congratulations! You have successfully mitigated an improper exception handling vulnerability!
+			</p>
+
+		</div>
+	</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Command Injection Vulnerability</title>
+		<link rel="stylesheet" href="../style.css">
+	</head>
+	<body>
+		<div class="wrapper">
+			<h1>Command Injection Vulnerability</h1>
+			<div class="navlinks">
+				<ul class="horizontal">
+					<li><a href="../index.html">Home</a></li>
+				</ul>
+			</div>
+
+			<h2 id="introduction">Introduction</h2>
+			<p>
+				Command injections are possible when user input is interpreted by a system shell (e.g., /bin/sh, Windows Command Prompt, or PowerShell). In the worst case, an attacker can execute arbitrary commands to execute other programs, elevate privilege, and access other system resources.
+			</p>
+			<p>
+				In Java programs, this vulnerability often appears in the form of a call to <code>Runtime.exec("cmd /C" ...)</code> or <code>Runtime.exec("/bin/sh -c" ...)</code> where unsanitized user input is used as arguments to some external program or non- executable command.
+			</p>
+
+			<h3 id="description">Exercise Description</h3>
+			<p>
+				In this exercise, we provide a naive program that looks for a domain name address. This simple example demonstrates how a developer might choose to use an external program to perform certain tasks. When an external program does not have a compatible API, it is tempting to use a shell interpreter to invoke the program, but this may expose the risk of command injection. Exploit the command injection vulnerability to run an extra command. In a real exploit, the command may be something disastrous like <code>rm -rf /</code>, but for now stick with something more innocuous like <code>cat /etc/passwd</code>.
+			</p>
+
+			<h3 id="mitigation_description">Vulnerability Mitigation</h3>
+			<p>
+				For this exercise, we will see two ways to mitigate the vulnerability. The first will "Eliminate the Shell", which is an important part of the attack vector. By executing a program directly instead of trying to run a shell command, we mitigate the possibility of abusing shell metacharacters to execute two commands.
+			</p>
+			<p>
+				Even better than invoking another program is using an internal API. In this example, the JDK has internal implementations of domain name resolution. Using an API instead of executing a program provides much more control over how the library/program interprets inputs. For example, a well-written API will have separate interfaces/methods for separate functionalities, so you will not be able to accidentally allow illegal behavior. In nearly every case, an internal API is both more secure and more efficient than trying to execute an external program.
+			</p>
+
+			<h2 id="instructions">Exercise Instructions</h2>
+			<p>
+				This exercise will be completed entirely on the command line shell of the provided virtual machine. To open the shell, right-click on the "EXERCISES" directory and select "Open in Terminal". Enter the following command to change into the Command Injection exercise directory:
+			</p>
+
+			<pre><code>$ cd 3.8.2_cmd_injection</code></pre>
+
+			<h3 id="compile" class="steps">Compile the Program</h3>
+			<p>
+				We provide a Makefile that will compile the program. Every time you change the <code>Main.java</code> file, you must recompile the program before running it again. Enter the following command to compile the program:
+			</p>
+
+			<pre><code>$ make</code></pre>
+			
+			<h3 id="run" class="steps">Run the Program</h3>
+			<p>
+				The next step is to run the program and test some inputs. To execute the program, enter the following command:
+			</p>
+			
+			<pre><code>$ java Main</code></pre>
+
+			<p>
+				You should see the output from the program prompting for a hostname. Type a hostname like <code>wisc.edu</code> and press enter. The program will lookup the hostname using the <code>nslookup</code> command and display the output. Here is an example of a successful input/output for the program:
+			</p>
+
+			<pre><code>hostname to lookup: wisc.edu
+Server:		127.0.1.1
+Address:	127.0.1.1#53
+
+Non-authoritative answer:
+Name:	wisc.edu
+Address: 13..92.9.70</code></pre>
+
+			<p>
+				Try this with a few different hostnames, including hostnames that do not exist or are not correctly formatted. To exit the program, simply type <code>exit</code> in place of a hostname. On some inputs, it is possible for the <code>nslookup</code> command to execute in "interactive mode" when no arguments are provided to it. In this case you can press <code>ctrl+c</code> to terminate the program.
+			</p>
+
+			<h3 id="inspect" class="steps">Inspect the Program Code</h3>
+			<p>
+				Now that you understand the basic behavior of the program, it's time to look at the implementation. This program is implemented in <code>Main.java</code>. Use your favorite <a href="../text_editors.html">text editor</a> to open this file. Enter the following command to open the file in Nano:
+			</p>
+
+			<pre><code>$ nano Main.java</code></pre>
+
+			<p>
+				Spend some time looking at the code and tracing the flow of execution. You're looking for an <em>attack surface</em> and corresponding <em>attack vector</em>. In other words, how can an attacker's input reach the shell command?
+			</p>
+			
+			<p>
+				You should eventually inspect the following segment of code:
+			</p>
+			
+			<pre><code>// execute the nslookup command
+String[] cmd = { "/bin/sh", "-c", "nslookup " + hostname };
+Process proc = Runtime.getRuntime().exec(cmd);</code></pre>
+
+			<p>
+				This will be the key to exploiting the Command Injection vulnerability. The hostname input is passed directly into the shell interpreter. We need to make the shell execute a second command based on our hostname string.
+			</p>
+			
+			<h3 id="exploit" class="steps">Exploit the Vulnerability</h3>
+			<p>
+				Exit the text editor. Run the program again in the same way as <a href="#run">Run the Program</a>. Enter a hostname that, when inserted into the shell interpreter arguments, will result in a second command being run. As mentioned in the introduction, the second command may be something disastrous like <code>rm -rf /</code>, but for now try to execute something more innocuous like <code>cat /etc/passwd</code>. Try this now, and only read on when you see the output of your second command or are stuck.
+			</p>
+			
+			<p>
+				If you're stuck, start by investigating how you can run two commands in one line of the terminal. For example, some of the useful metacharacters in most terminals are pipes <code>|</code>, command sequences <code>;</code>, and conditional execution <code>||</code> <code>&&</code>. In the terminal, try running two commands with each of these techniques. Once you get the hang of that, try executing a second command through the input to our example program. Try this now and only read on when you are successful or stuck again.
+			</p>
+			
+			<p>
+				If you're still stuck, imagine what the shell interpreter is running. The intended command is <code>nslookup wisc.edu</code>, where <code>wisc.edu</code> in this example comes from our input. We want the interpreter to run a command like <code>nslookup wisc.edu && cat /etc/passwd</code>. What should <code>hostname</code> be to result in that command?
+			</p>
+			
+			<p>
+				Once you manage to see the output of your second command, it's time to fix the vulnerability!
+			</p>
+			
+			<h3 id="mitigate" class="steps">Mitigate the Vulnerability</h3>
+			<p>
+				Let's go back to our text editor and open <code>Main.java</code> (see <a href="#inspect">Inspect the Program Code</a>). This time, we're going to make some changes. The vulnerability in this example comes from the shell interpreter's ability to execute multiple programs. Instead of executing a shell command (e.g., <code>/bin/sh</code>), execute the intended program directly. In the case of <code>nslookup</code>, the executable can be invoked by name or full path instead of being an input to the shell executable. You'll have to be careful about how to parse the input as a parameter to <code>nslookup</code>.
+			</p>
+			
+			<p>
+				Once you have a potential fix implemented, save and exit the file (e.g., in Vim, press <code>esc</code> then type <code>:wq</code>). Now recompile and run the program as we did in <a href="#compile">Compile the Program</a> and <a href="#run">Run the Program</a>. Try your exploit again. Make sure to test both good and bad inputs, so that we know the exploit is no longer possible <strong>and</strong> the program still works as intended.
+			</p>
+			
+			<p>
+				Repeat the process of changing the program, compiling, and testing until you are convinced that the vulnerability is mitigated and the original program intent remains functional. It's likely that your mitigated program will still have some chance of unexpected behavior, like the "interactive mode" of <code>nslookup</code>.
+			</p>
+
+			<h3 id="improve" class="steps">Improve the Mitigation using an Internal API</h3>
+			<p>
+				Now we'll improve our solution by using an internal API. This will remove the possibility of bad input to the <code>nslookup</code> command causing unexpected behavior. Look at <code>java.net.InetAddress</code> in the <a href="https://docs.oracle.com/javase/8/docs/api/java/net/InetAddress.html">JDK documentation</a> for domain name lookup APIs. Use the documentation to create a new method that replaces <code>rDomainName()</code> and generates the appropriate output using <code>java.net.InetAddress</code>.
+			</p>
+			<p>
+				Repeat the process of changing the program, compiling, and testing until you are convinced that the vulnerability is mitigated and the original program intent remains functional. This time, you should find that the program will not be easily broken!
+			</p>
+		</div>
+	</body>
+</html>

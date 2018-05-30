@@ -1,0 +1,89 @@
+/*
+ *	all body text contained in wrapper;
+ *	adapted from https://css-tricks.com/best-way-implement-wrapper-css/
+ */
+.wrapper {
+	/* center page */
+	margin-left:	auto;
+	margin-right:	auto;
+	
+	/* set max width to have margins when possible*/
+	max-width: 960px;
+
+	/* add padding for screens with exactly 960px */
+	padding-right:	10px;
+	padding-left:	10px;
+}
+
+/*
+ *	Code block formatting.
+ */
+pre {
+	/* wrapping text keeps indent */
+	white-space: pre-wrap;
+
+	/* tab size to be more manageable */
+	tab-size: 3.
+
+	/* background color and padding */
+	background:	LightGrey;
+	padding:	10px;
+}
+
+/*
+ *	Number headings for instruction steps.
+ *	adapted from http://2ality.com/2012/01/numbering-headingshtml.html
+ */
+h3.steps:before {
+	content: counter(hCounter) ".\0000a0\0000a0";
+	counter-increment: hCounter;
+}
+
+body {
+	counter-reset: hCounter;
+}
+
+/*
+ * Padding and border for tables
+ */
+table, th, td {
+	border: 1px solid black;
+	border-collapse: collapse;
+	padding: 10px;
+	vertical-align: top;
+}
+
+/* center images with border */
+img.figure {
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	width: 90%;
+	padding: 1px;
+	border: 1px solid black;
+}
+
+
+/*
+ * Make a horizontal "table" for the navigation links. Adapted from:
+ * https://css-tricks.com/centering-list-items-horizontally-slightly-trickier-than-you-might-think/
+ */
+.navlinks {
+	display: table;
+	margin: 0;
+}
+
+ul.horizontal {
+	min-width: 500px;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+ul.horizontal li {
+	display: inline;
+}
+
+ul.horizontal li + li:before {
+    content: " | ";
+}

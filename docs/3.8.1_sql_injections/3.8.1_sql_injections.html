@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>SQL Injection Vulnerability</title>
+		<link rel="stylesheet" href="../style.css">
+	</head>
+	<body>
+		<div class="wrapper">
+			<h1>SQL Injection Vulnerability</h1>
+			<div class="navlinks">
+				<ul class="horizontal">
+					<li><a href="../index.html">Home</a></li>
+				</ul>
+			</div>
+
+			<h2 id="introduction">Introduction</h2>
+			<p>
+				SQL Injections are possible when improperly validated/escaped input is interpreted by a SQL Parser (i.e., included in a SQL statement). Dangerous consequences, such as data leakage and unauthorized access, can result.
+			</p>
+
+			<h3 id="description">Exercise Description</h3>
+			<p>
+				In this exercise, we provide a very simple program that checks for a given username and password in a portable SQLite database. If a correct username and password is given, then the program will display a welcome message. If an incorrect password or nonexistent username is supplied, the program will display a failure message. Your objective is to exploit a SQL injection vulnerability and trigger a "successful" login without a correct password (or even without a correct username).
+			</p>
+
+			<p><em>
+				Note: This program violates several best practices regarding password storage, credential management, authentication, etc., but you should focus on the SQL Injection vulnerability for this exercise.
+			</em></p>
+
+			<h3 id="prepared_statements">Vulnerability Mitigation - Prepared Statements</h3>
+			<p>
+				Prepared Statements protect an application from SQL Injections by parsing the SQL query separate from the runtime input. For example, a prepared statement may look like <code>SELECT * FROM USERS WHERE username == ?</code>, and this is the string that is parsed by the SQL database management system. The parser reserves a place for the input (string in this case) in place of the <code>?</code> and does the comparison on the input without ever parsing SQL metacharacters from the input.
+			</p>
+
+			<p>
+				We will fix the SQL Injection vulnerability in Main.java using prepared statements. If implemented correctly, the prepared statement will force the database to compare real passwords with the entire input string and thus return false unless the user's password is exactly what is input to the program.
+			</p>
+
+			<h2 id="instructions">Exercise Instructions</h2>
+			<p>
+				This exercise will be completed entirely on the command line terminal of the provided virtual machine. To open the terminal, right-click on the "EXERCISES" directory and select "Open in Terminal". Enter the following command to change into the SQL Injection exercise directory:
+			</p>
+
+			<pre><code>$ cd 3.8.1_sql_injections</code></pre>
+
+			<h3 id="compile" class="steps">Compile the Program</h3>
+			<p>
+				We provide a Makefile that will compile the program. Every time you change the <code>Main.java</code> file, you must recompile the program before running it again. Enter the following command to compile the program:
+			</p>
+
+			<pre><code>$ make</code></pre>
+
+			<p>
+				If you have edited the <code>Main.java</code> file and it contains compiler errors, the make command will fail and show you where the errors were found.
+			</p>
+			
+			<h3 id="run" class="steps">Run the Program</h3>
+			<p>
+				The next step is to run the program and test some inputs. To execute the program after compiling, enter the following command:
+			</p>
+			
+			<pre><code>$ java Main</code></pre>
+
+			<p>
+				You should see output from the program prompting for a username. Type a username and press enter. The program will then prompt you for a password. Type a password and press enter. To ease exploitation, the password field will not be hidden. The program will check the SQLite database for the username/password combination and tell you if the login was successful. The following is an example of a correct username/password input:
+			</p>
+
+			<pre><code>username: some_guy
+password: his_password
+Login Successful! Welcome some_guy</code></pre>
+
+			<p>
+				Try this a few times with different usernames and passwords to see how the program behaves. To exit the program, type <code>exit</code> in place of a username. All of the "correct" username and password combinations can be found in <code>create_db.sql</code>, which the Makefile uses to generate the database.
+			</p>
+
+			<h3 id="inspect" class="steps">Inspect the Program Code</h3>
+			<p>
+				Now that you understand the basic behavior of the program, it's time to look at the implementation. This program is implemented in <code>Main.java</code>. Use your favorite <a href="../text_editors.html">text editor</a> to open this file. Enter the following command to open the file in Nano:
+			</p>
+
+			<pre><code>$ nano Main.java</code></pre>
+
+			<p>
+				Spend some time looking at the code and tracing the flow of execution. You're looking for an <em>attack surface</em> and corresponding <em>attack vector</em>. In other words, how can an attacker's input reach the database?
+			</p>
+			
+			<p>
+				You should eventually find yourself inspecting the following segment of code:
+			</p>
+			
+			<pre><code>// check for the username/password in database
+String sqlQuery = "SELECT COUNT(*) AS count FROM USERS WHERE username == '" + username
+        + "' AND password == '" + password + "'";
+statement = c.createStatement();
+results = statement.executeQuery(sqlQuery);
+// if no user with that username/password, return false; otherwise must be true
+if (results.getInt("count") == 0)
+    return false;
+else
+    return true;</code></pre>
+
+			<p>
+				This will be the key to exploiting the SQL Injection vulnerability. We need to make the SQL query return a non-zero number for the count of tuples matching the <code>WHERE</code> clause, and our input to <code>password</code> is used directly in the SQL query.
+			</p>
+			
+			<h3 id="exploit" class="steps">Exploit the Vulnerability</h3>
+			<p>
+				Exit the text editor. Run the program again in the same way as <a href="#run">Step 2</a>. Enter a username like "some_guy" and then a password that, when inserted into the SQL query, will ensure that the <code>WHERE</code> clause is always satisfied. Try this now and only read on when you get a "successful login" or are stuck.
+			</p>
+			
+			<p>
+				If you're stuck, start by thinking of how we can change the SQL query's <code>WHERE</code> clause by controlling the <code>password</code> field. A good place to look is in the order of operations of <code>AND</code> and <code>OR</code> in SQL queries. For example, the boolean statement <code>x==y AND a==b OR True</code> will always evaluate to True, regardless of the variables. Try again with this in mind, and read on when you are successful or stuck again.
+			</p>
+			
+			<p>
+				If you're still stuck, you should consider where our input fits into the existing SQL query. Using "True" won't work, because the statement appends a single-quote at the end of our input. What's something that equates to True and ends in a single-quote? The equation of two identical strings fits these requirements. Our goal then is to change the SQL query from the intended <code>SELECT COUNT(*) AS count FROM USERS WHERE username == 'some_guy' AND password == 'bad_password'</code> to something like <code>SELECT COUNT(*) AS count FROM USERS WHERE username == 'some_guy' AND password == 'bad_password' OR 'a'=='a'</code>.
+			</p>
+			
+			<p>
+				Once you manage to get a "Login Successful" message without a correct password, it's time to fix the vulnerability!
+			</p>
+			
+			<h3 id="mitigate" class="steps">Mitigate the Vulnerability</h3>
+			<p>
+				Let's go back to our text editor and open <code>Main.java</code> (see <a href="#inspect">Step 3</a>). This time, we're going to make some changes. Using what you know about <a href="https://docs.oracle.com/javase/tutorial/jdbc/basics/prepared.html">Prepared Statements</a>, make some changes to the vulnerable code sample so the user input is never interpreted as part of the SQL query.
+			</p>
+			
+			<p>
+				Once you have a potential fix implemented, save and exit the file. Now recompile and run the program as we did in the <a href="#compile">compilation</a> step and the <a href="#run">run</a> step. Try your exploit again. Make sure to test a good password so you know the intended function is not broken.
+			</p>
+			
+			<p>
+				Repeat the process of changing the program, compiling, and testing until you are convinced that the vulnerability is mitigated and the original program intent remains functional.
+			</p>
+		</div>
+	</body>
+</html>

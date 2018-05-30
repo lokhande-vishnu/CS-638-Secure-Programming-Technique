@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Cross Site Request Forgery Vulnerability</title>
+		<link rel="stylesheet" href="../style.css">
+	</head>
+	<body>
+		<div class="wrapper">
+			<h1>Cross Site Request Forgery Vulnerability</h1>
+			<div class="navlinks">
+				<ul class="horizontal">
+					<li><a href="../index.html">Home</a></li>
+					<li><a href="3.9.1_cross_site_mechanisms.html">Cross Site Mechanisms</a></li>
+				</ul>
+			</div>
+
+			<h2 id="introduction">Introduction</h2>
+			<p>
+				A cross site request forgery vulnerability is a cross site mechanism that can force a victim's browser to send an authenticated web request. In a successful attack, the victim's browser sends a malicious request (crafted by the attacker) to a web site and the web site handles it as if the victim requested it directly. This is a similar vulnerability to cross site scripting because it involves exploitation of trust between web sites and web browsers. However, cross site request forgery exploits a web site's trust of an authenticated user's browsing session, whereas cross site scripting exploits the trust a user has for a web site's content.
+			</p>
+
+			<p>
+				The goal of cross site request forgery is to perform a web action that only an authenticated user could perform. A classic example involves a naive bank web site that performs wire transfers by processing requests like <code>https://www.bank.fake/transfer?fromUser=victim&toUser=attacker&ammount=10000</code>. The web site would check that the session attached to the request was authenticated and authorized as "victim" before completing the transfer. However, with a cross site request forgery, the attacker can silently trick the victim into sending that request and transferring the money. There are many examples of how cross site request forgery can also be used to expose other vulnerabilities or as a component in advanced persistent threats, but we will limit the scope of this exercise to simply forging an "action" on behalf of our victim.
+			</p>
+
+			<h3 id="description">Exercise Description</h3>
+			<p>
+				In this exercise, we provide a small HTTP server that prompts visitors for a username and counts the number of times that user clicks a specific link. Once registered, the web site will display the current user's username, the number of times that user has clicked the link, and the link to be clicked. This naive server does not have any form of authentication and does not persistently store the click count. For the purposes of this exercise, we will not consider the implications of these traits. Instead, we will focus on the potential for cross site request forgery. Your objective is to craft a request forgery that will trigger a "click" every time a victim visits your malicious web site page.
+			</p>
+
+			<p>
+				The program has four source files: <code>TargetServer.java</code>, <code>DoActionServlet.java</code>, <code>LoginServlet.java</code>, and <code>ViewPageServlet.java</code>. The servlets are each attached to a URL path on the server, so all requests directed to that path will be handled by that servlet's implementation. The following table summarizes each file's purpose.
+			</p>
+
+			<table style="width: 100%">
+				<tr>
+					<th>Filename</th>
+					<th>URL Path</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td><code>TargetServer.java</code></td>
+					<td>n/a</td>
+					<td>Initializes and starts the vulnerable web server. <b>You will not need to change this file.</b></td>
+				</tr>
+				<tr>
+					<td><code>DoActionServlet.java</code></td>
+					<td>localhost:8080/action</td>
+					<td>Each request to this servlet increments a counter stored with the session that is attached to the request; if no session exists, nothing happens. Requests to this servlet are logged to stdout in the server command line interface. <b>You may change this file</b> in part of the mitigation for this exercise.</td>
+				</tr>
+				<tr>
+					<td><code>LoginServlet.java</code></td>
+					<td>localhost:8080/login</td>
+					<td>Requests to this servlet will create a new session based on a username parameter. If a session already exists, it resets the counter for that session. <b>You may change this file</b> in part of the mitigation for this exercise.</td>
+				</tr>
+				<tr>
+					<td><code>ViewPageServlet.java</code></td>
+					<td>localhost:8080/</td>
+					<td>This servlet displays one of two html pages based on the presence of a session. If there is a session, it shows a link and a counter for how many times the current session has clicked the link. If there is no session, it shows a form for creating a session. <b>You may change this file</b> in part of the mitigation for this exercise..</td>
+				</tr>
+			</table>
+
+			<h3 id="mitigation_description">Vulnerability Mitigation</h3>
+			<p>
+				Two common protections against cross site request forgery are checking origin headers and implementing session-specific synchronizer tokens. For a nearly comprehensive approach to cross site request forgery mitigation, see the <a href="https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF)_Prevention_Cheat_Sheet">OWASP Cross Site Request Forgery Prevention Cheat Sheet</a>. In many situations, it is preferred to use existing frameworks or libraries (such as <a href="https://docs.spring.io/spring-security/site/docs/current/reference/html/csrf.html">Spring Security</a>) to protect against cross site request forgeries.
+			</p>
+
+			<p>
+				For this exercise, we will focus on synchronizer tokens, which are secure random values that are attached to each session. Every "state changing" action must be accompanied by the correct synchronizer token, otherwise the server will deny the request. Since the attacker does not know this token, the forged request cannot contain the correct token.
+			</p>
+
+			<p><em>
+				Note: Synchronizer tokens are not sufficient in the presence of other potential vulnerabilities. For example, without encryption, an attacker could passively view the token as it is sent to the victim in the web page. We are ignoring situations like this for now to emphasize the basic cross site request forgery exploit mechanism.
+			</em></p>
+
+			<h2 id="instructions">Exercise Instructions</h2>
+			<p>
+				This exercise will be completed entirely on the command line terminal of the provided virtual machine. To open the terminal, right-click on the "EXERCISES" directory and select "Open in Terminal". Enter the following command to change into the exercise directory:
+			</p>
+
+			<pre><code>$ cd 3.9.1_cross_site_mechanisms</code></pre>
+
+			<h3 id="compile" class="steps">Compile the Program</h3>
+			<p>
+				We provide a Makefile that will compile the program. Every time you change the a <code>.java</code> file, you must recompile the program before running it again. Enter the following command to compile the program:
+			</p>
+
+			<pre><code>$ make</code></pre>
+			
+			<h3 id="run" class="steps">Run the Program</h3>
+			<p>
+				This program depends on files in the <code>lib</code> directory, so the command to run the server is <code>java -cp "./lib/*:." TargetServer</code>. You can see that this command is the only line in <code>run.sh</code>, so you can also start the server by entering the following command:
+			</p>
+
+			<pre><code>$ ./run.sh</code></pre>
+
+			<p>
+				To stop the server, type <code>quit</code> in the command line interface and press enter. To view the web site, open Firefox by clicking the globe icon in the bottom left hand corner of the screen. The server is attached to <code>http://localhost:8080</code>.
+			</p>
+
+			<p>
+				The first page you see is the result of <code>ViewPageServlet.java</code> producing a response to the request without a session. You can enter a username and click "Submit" to create a session. This will take you to the second version of our page. Take note of the elements on this page. When you click the "CLICK" link, it will increment your session's counter and refresh the page. The figure below shows an overview of the logical data flow during normal use of the web site.
+			</p>
+
+			<img class="figure" src="xsrf_diagram.png" />
+
+			<p>
+				Try logging into the server and clicking the link. Note that the server command line will log the click and the counter updates. Experiment with the interface until you understand the basic behavior of the program and how the various pieces interact. To stop the server and terminate the program, type <code>quit</code> in the command line interface and press enter.
+			</p>
+
+			<p><em>
+				Note: A very simple but valuable tool is Firefox's Web Developer tools. In particular, the Network tab will provide some more insight as to how the application works. You can access this by pressing <code>Ctrl+Shift+E</code> when in the Firefox browser. Every time you load a page, you will see the HTTP requests that were sent to get there. Try this while clicking the link after logging into the site. You should see two requests, one directed at the "action" url and one directed at the "view" url.
+			</em></p>
+
+			<h3 id="inspect" class="steps">Inspect the Program Code</h3>
+			<p>
+				Now that you understand the basic behavior of the program, it's time to look at the implementation. As mentioned above, this program is implemented in four files. You should be somewhat familiar with the program structure after the <a href="3.9.1_cross_site_scripting.html">cross site scripting exercise</a>, but now we are looking at all of the servlet files. Use your favorite <a href="../text_editors.html">text editor</a> to open them. Enter the following command to open each file in Nano:
+			</p>
+
+			<pre><code>$ nano ViewPageServlet.java
+$ nano DoActionServlet.java
+$ nano LoginServlet.java</code></pre>
+
+			<p>
+				As you look through the code and trace the diagram, start to consider the following questions: What does clicking the "CLICK" link do in <code>ViewPageServlet.java</code>? Does the <code>DoActionServlet.java</code> method check anything other than the session? Where would you consider creating and checking a synchronizer token?
+			</p>
+			
+			<h3 id="exploit" class="steps">Exploit the Vulnerability</h3>
+			<p>
+				By now, you should understand the mechanism that causes a "click" to be counted. When a user visits the <code>http://localhost:8080/action</code> URL, the servlet checks for a session and increments the counter if one exists before redirecting the user back to the main page. The goal now is to have a malicious web site page that causes a browser to send a request to this URL when the victim visits. A very common way to embed such a request is through the <code>img</code> html tag. When loading an image, the browser fetches the resource indicated in the <code>src</code> attribute. This is equivalent to sending a get request. Since the browser automatically attaches session cookies to every get request sent to a specific domain, all we need is to specify the vulnerable web page URL in our <code>src</code> attribute and trick a logged-in victim into visiting the page. If we want to be even more clever, we can specify the height and width of the image to be zero, so it does not render at all in the browser window.
+			</p>
+
+			<p>
+				To test this exploit, we will need three things: the vulnerable server, the malicious web page, and an authenticated user session. First, run the server as we did in <a href="#run">Run the Program</a>. Next, edit <code>bad_link.html</code> to include our malicious <code>img</code> tag. Now, make sure you can see the server command line interface while you log into the web site in one browser tab and open <code>bad_link.html</code> in another browser tab. Every time you refresh the <code>bad_link.html</code> tab, you should see a click event logged in the server command line interface. When you refresh the main web site page, you should see that the click count has increased without ever clicking the link.
+			</p>
+
+			<p>
+				Congratulations! You've exploited a cross site request forgery vulnerability!
+			</p>
+
+			<p><em>
+				Note: You should also play with the effects of visiting the malicious page without an active session. This can be accomplished by not signing into the web site or by waiting approximately five minutes (without interacting with the web site) for the session to expire.
+			</em></p>
+			
+			<h3 id="mitigate" class="steps">Mitigate the Vulnerability</h3>
+			<p>
+				As mentioned above, we will implement a basic synchronizer token to prevent your cross site request forgery exploit. Every session we create must also have a securely generated random number that serves as the token. Every legitimate action request must contain this token. The action servlet must only accept requests where the submitted token matches the token stored in the session. For a more detailed explanation of this mechanism, see <a href="https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF)_Prevention_Cheat_Sheet#Synchronizer_.28CSRF.29_Tokens">the Synchronizer Tokens section</a> of their Cross Site Request Forgery Prevention Cheat Sheet.
+			</p>
+
+			<p>
+				Your first step should be creating the synchronizer token with each session. Java's <a href="https://docs.oracle.com/javase/8/docs/api/java/security/SecureRandom.html">SecureRandom API</a> will be sufficient for generating these tokens. For a 256-bit token, you should get 32 bytes from the SecureRandom object. You will also have to convert this byte array to a string, since our request parameters will need to be strings. One option for this is to simply convert the byte array to its hexadecimal string equivalent. Store the string as a session attribute in the same way that we already store the username. Try to implement this in <code>Login.java</code>. Remember to use the <code>make</code> command to compile your code. We'll test this part in the next paragraph. Come back when you think you've got it and your code compiles.
+			</p>
+
+			<p>
+				Once you have your random number generator implemented, we should test it by printing our token on our main page. This should be done very similarly to how we print the session username. This will be a temporary addition, but our next step will involve using the token with our "click" link. Implement this print statement, compile your program, and run it. Visit the web site and log in. Make sure you see the random string. It should not change when you refresh the page or click the link, but it should change after the session expires. In order to test this, you can either wait the five minutes for the session to expire, or you can open a private window <code>ctrl + shift + P</code> in Firefox. Make sure the two sessions have different tokens!
+			</p>
+
+			<p>
+				Now that you can generate and store your tokens, it's time to start checking them. In <code>ViewPageServlet.java</code>, instead of printing the token on our main page, append the token as a parameter in the "click" link. For example, instead of the address being <code>"action"</code>, it should be <code>"action?token=..."</code> where the <code>...</code> is replaced by the token's string value. Be careful to escape your quotation marks correctly. Compile and run your code to make sure the link address contains the random token value. You can check this by hovering over the link after logging into the web site.
+			</p>
+
+			<p>
+				Once we have the request passing our token to the <code>DoActionServlet.java</code> handler, we need to check it against the value we are expecting. To implement this, you should get the string from our session in the same way we do for <code>ViewPageServlet.java</code>. This is our expected token. Next, you need to get the "token" parameter from the request. See how we get the username in the <code>LoginServlet.java</code> handler. You will use the same technique, but get the parameter named "token" instead of "username". Now, compare the strings, and only process the request if they are the same. It would be appropriate to call <code>res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid token");</code> when there is a mismatch. Be sure to reject cases where no parameter is provided (and avoid the potential null pointer exception when you call <code>getParameter</code> for a parameter that doesn't exist).
+			</p>
+
+			<p>
+				Compile and run the server with your changes. First check to make sure your normal behavior still works (login and click counting). If something is broken, there may be a mistake in the way your implementation compares the expected and provided value. It is also possible that your concatenation of the token in <code>ViewPageServlet.java</code> is incorrect. Debug this part of the program and continue when it is working.
+			</p>
+
+			<p>
+				Now we can test our exploit to see that no clicks are registered by the link in <code>bad_links.html</code> because it does not contain the token. Similarly, if you provide an incorrect token (e.g., another random 32-byte hex string), it should also fail. You should see no click events in your server command line interface unless the authenticated user clicks the link directly.
+			</p>
+
+			<p>
+				Congratulations! You have (partially) mitigated a cross site request forgery vulnerability!
+			</p>
+
+			<p><em>
+				Note: This does not protect against an attacker who can see the token string in plain text. For example, if these requests were served over a public network, an attacker could see the token and create a request forgery with that token. You can simulate this by copying and pasting the correct token into your attack. The OWASP resources identified above cover this and other concerns with more advanced cross site request forgery.
+			</em></p>
+		</div>
+	</body>
+</html>

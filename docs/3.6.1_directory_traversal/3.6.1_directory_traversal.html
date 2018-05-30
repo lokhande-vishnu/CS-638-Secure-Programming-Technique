@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Directory Traversal Vulnerability</title>
+		<link rel="stylesheet" href="../style.css">
+	</head>
+	<body>
+		<div class="wrapper">
+			<h1>Directory Traversal Vulnerability</h1>
+			<div class="navlinks">
+				<ul class="horizontal">
+					<li><a href="../index.html">Home</a></li>
+				</ul>
+			</div>
+
+			<h2 id="introduction">Introduction</h2>
+			<p>
+				Directory traversal vulnerabilities allow an attacker to escape basic file-system sandboxing. In many situations, we wish to provide access only to resources within a specific directory. In the presence of a directory traversal vulnerability, an attacker can access resources outside of the "safe" directory. This is often accomplished using the "dot dot slash" mechanism provided by all modern file systems. When present in a path to a file, this mechanism tells the file system to go back up to the parent directory. For example, the following paths refer to the same file on a Unix system: <code>/etc/passwd</code> and <code>/bin/../etc/passwd</code>.
+			</p>
+
+			<p>
+				Different contexts have different potential directory traversal mechanisms. The following table summarizes some of these mechanisms:
+			</p>
+
+			<table style="width: 100%">
+				<tr>
+					<th>Context</th>
+					<th>Parent Directory Mechanism</th>
+				</tr>
+				<tr>
+					<td>Unix-like file systems</td>
+					<td>
+						<code>../</code>
+					</td>
+				</tr>
+				<tr>
+					<td>Windows file systems</td>
+					<td>
+						<code>..\</code>
+						<br />
+						<code>../</code>
+					</td>
+				</tr>
+				<tr>
+					<td>HTTP encoded paths</td>
+					<td>
+						<code>..</code>
+						<br />
+						<code>../</code>
+						<br />
+						<code>..\</code>
+						<br />
+						percent-encoded versions of the above (e.g., "<code>%2e%2e%2f</code>" = "<code>../</code>" or "<code>%2e%2e\</code>" = "<code>..\</code>")
+					</td>
+				</tr>
+				<tr>
+					<td>Unicode encoded paths</td>
+					<td>
+						<code>..</code>
+						<br />
+						<code>../</code>
+						<br />
+						<code>..\</code>
+						<br />
+						two-byte percent-encoded versions of the above (e.g., "<code>..%c1%1c</code>" = "<code>../</code>" or "<code>%2e%2e%c0%af</code>" = "<code>..\</code>")
+					</td>
+				</tr>
+			</table>
+
+			<h3 id="description">Exercise Description</h3>
+			<p>
+				As you can imagine, there are many situations in which directory traversal could be a problem. For example, a web site that allows for loading user-selected images from a directory on the web server may be vulnerable. Another example may be in a naive file transfer implementation that restricts user's working directory. For this exercise, we will consider a situation where some Java application must execute a third-party binary that is selected by a user. This could be present in some remote access mechanism where only the commands found in a certain directory are available. Your objective will be to input a string that executes a program outside of that directory.
+			</p>
+
+			<p>
+				We provide a simple Java program that executes a program found in a "safe" directory. The program takes a single argument: the name of the executable. It executes the program with that name found in the <code>safe_programs</code> directory located in the working directory of the program. For now, the only two programs are binary implementations of Bash's <code>pwd</code> and <code>whoami</code> commands.
+			</p>
+
+			<h3 id="mitigation_description">Vulnerability Mitigation</h3>
+			<p>
+				To mitigate the vulnerability in this exercise, we will use Java's implementation of "real" paths to ensure that the file specified has the correct parent directory. For this purpose, we want canonical paths. A canonical path is one that contains no relative path elements (i.e., no dot dot slash) and expands all symbolic-type links (i.e., if a path links to another file, it replaces the prefix of that path to the pointed-to file). The important notion of canonical paths is that any two paths referring to the same file system object have identical canonical paths. This will eliminate the complications of detecting relative path elements.
+			</p>
+
+			<h2 id="instructions">Exercise Instructions</h2>
+			<p>
+				This exercise will be completed entirely on the command line terminal of the provided virtual machine. To open the terminal, right-click on the "EXERCISES" directory and select "Open in Terminal". Enter the following command to change into the exercise directory:
+			</p>
+
+			<pre><code>$ cd 3.6.1_directory_traversal</code></pre>
+
+			<h3 id="compile" class="steps">Compile the Program</h3>
+			<p>
+				We provide a Makefile that will compile the program. Every time you change the <code>Main.java</code> file, you must recompile the program before running it again. Enter the following command to compile the program:
+			</p>
+
+			<pre><code>$ make</code></pre>
+			
+			<h3 id="run" class="steps">Run the Program</h3>
+			<p>
+				We will run this Java program from the command line. You must provide an executable name to the program. Execute the program by entering the following command, where "exe_name" is the name of an executable in the <code>safe_programs</code> directory:
+			</p>
+
+			<pre><code>$ java Main exe_name</code></pre>
+
+			<p><em>
+				Note: If you somehow execute a program that gets stuck without terminating, you can press <code>ctrl + c</code> to terminate the program.
+			</em></p>
+
+			<h3 id="inspect" class="steps">Inspect the Program Code</h3>
+			<p>
+				Now that you understand the basic behavior of the program, it's time to look at the implementation. This program is implemented in <code>Main.java</code>. Use your favorite <a href="../text_editors.html">text editor</a> to open this file. Enter the following command to open it in Nano:
+			</p>
+
+			<pre><code>$ nano Main.java</code></pre>
+
+			<p>
+				Spend some time looking at the code to find our attack vector. How might our malicious input get to the file system?
+			</p>
+
+			<p>
+				The following lines should tell us that our input can be used for directory traversal:
+			</p>
+
+			<pre><code>// find the program to execute
+Path safeDir = Paths.get("safe_programs");
+Path exePath = safeDir.resolve(programName);</code></pre>
+			
+			<h3 id="exploit" class="steps">Exploit the Vulnerability</h3>
+			<p>
+				As we noticed above, the program simply "resolves" the program name against our input filename. Using <a href="https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#resolve-java.nio.file.Path-">Path.resolve(...)</a> and the information in the table above, craft an input that executes the "unsafe program" in our working directory (one level above the safe directory). In a real attack, we could climb the directory tree all the way to root and execute any zero-argument program in the filesystem, but let's stick to the <code>unsafe_program</code> in our working directory. You should see the following output on successful exploitation:
+			</p>
+
+			<pre><code>UNSAFE PROGRAM OUTPUT
+
+Program Exit Code: 0
+</code></pre>
+
+			<p>
+				If you get stuck, imagine what you would type to execute that program from a shell working in the <code>safe_programs</code> directory. Once you see that message, move on to see how we can mitigate the vulnerability!
+			</p>
+			
+			<h3 id="mitigate" class="steps">Mitigate the Vulnerability</h3>
+			<p>
+				As mentioned in the introduction, we will be comparing canonical paths to determine that the specified file is within the correct directory. First, take a look at the <a href="https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html">Paths API</a> documentation to see what operations we can use. We'll need to use the "real" path mechanism to canonicalize both paths, then ensure that the executable's parent is exactly the same as our safe directory. In order for our path to truly be canonical, we must follow and replace links. Try to implement this using the Paths API. If we get an input that does not satisfy this condition, print an error message and return a negative value. Remember to compile your program before testing. Come back when you're successful or stuck.
+			</p>
+
+			<p>
+				If you're stuck, take a closer look at the following API methods:
+			</p>
+
+			<ul>
+				<li><a href="https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#toRealPath-java.nio.file.LinkOption...-">Path.toRealPath()</a></li>
+				<li><a href="https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#getParent--">Path.getParent()</a></li>
+				<li><a href="https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#equals-java.lang.Object-">Path.equals()</a></li>
+			</ul>
+
+			<p>
+				The <code>toRealPath</code> method should describe how to compute the real path <b>without links</b>. Be careful to consider which methods can return <code>null</code> and avoid null pointer exceptions.
+			</p>
+
+			<p>
+				Repeat the process of implementing the mitigation, compiling the program, and testing the behavior until you can confirm that the program's desired behavior is unchanged and that our exploits no longer work. Congratulations, you've successfully mitigated the directory traversal vulnerability!
+			</p>
+
+		</div>
+	</body>
+</html>
