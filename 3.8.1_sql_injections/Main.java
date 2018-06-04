@@ -1,9 +1,19 @@
+/**
+CS638
+Exercise on Exceptions
+
+@author Vishnu Sai Rao Suresh Lokhande (lokhande@cs.wisc.edu)
+Changes in the code pointed out by >>
+
+*/
+
 import java.io.Console;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 
 /**
  * Main execution class for sql_injection exercise. Prompts user for username
@@ -78,11 +88,14 @@ public class Main {
 			// connect to the database
 			c = DriverManager.getConnection(DB_URL);
 
+			// >> USING PREPARED STATEMENTS HERE
 			// check for the username/password in database
-			String sqlQuery = "SELECT COUNT(*) AS count FROM USERS WHERE username == '" + username
-					+ "' AND password == '" + password + "'";
-			statement = c.createStatement();
-			results = statement.executeQuery(sqlQuery);
+			String sqlQuery = "SELECT COUNT(*) AS count FROM USERS WHERE username == ? AND password == ?";
+
+			PreparedStatement pstmt = c.prepareStatement(sqlQuery);
+			pstmt.setString(1, username);
+			pstmt.setString(2, password);
+			results = pstmt.executeQuery();
 
 			// if no user with that username/password, return false; otherwise must be true
 			if (results.getInt("count") == 0)
