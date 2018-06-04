@@ -1,3 +1,12 @@
+/**
+CS638
+Exercise on Exceptions
+
+@author Vishnu Sai Rao Suresh Lokhande (lokhande@cs.wisc.edu)
+Changes in the code pointed out by >>
+
+*/
+
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Path;
@@ -45,32 +54,40 @@ public class Main {
 	 *             if the program name tries to escape the safe directory
 	 */
 	private static int execSafeProgram(String programName) {
+	    
+	    try {
+		// >> Compare the canonical paths to identify invalid paths
 		// find the program to execute
-		Path safeDir = Paths.get("safe_programs");
-		Path exePath = safeDir.resolve(programName);
-
+		Path safeDir = Paths.get("safe_programs").toRealPath();
+		Path exePath = safeDir.resolve(programName).toRealPath();
+	    
+		if (! exePath.getParent().equals(safeDir)) {
+		    System.err.println("ERROR: Given path is invalid");
+		    return -1;
+		}
+	    
 		// configure program runtime to execute ./safe_programs/programName executable
 		ProcessBuilder procBuild = new ProcessBuilder(exePath.toString());
-
+		
 		// capture output and print to current shell
 		procBuild.redirectErrorStream(true);
 		procBuild.redirectOutput(Redirect.INHERIT);
-
-		try {
-			// execute the program
-			Process p = procBuild.start();
-			// wait for program to return and exit
-			return p.waitFor();
-		} catch (IOException ex) {
+		
+		// execute the program
+		Process p = procBuild.start();
+		// wait for program to return and exit
+		return p.waitFor();
+		
+	    } catch (IOException ex) {
 			// error starting process
-			System.out.println("Error running program: " + ex.getMessage());
-			ex.printStackTrace();
-			return -1;
-		} catch (InterruptedException ex) {
-			// error waiting for process
-			System.out.println("Error running program: " + ex.getMessage());
-			ex.printStackTrace();
-			return -1;
-		}
+		System.out.println("Error running program: " + ex.getMessage());
+		ex.printStackTrace();
+		return -1;
+	    } catch (InterruptedException ex) {
+		// error waiting for process
+		System.out.println("Error running program: " + ex.getMessage());
+		ex.printStackTrace();
+		return -1;
+	    }
 	}
 }
