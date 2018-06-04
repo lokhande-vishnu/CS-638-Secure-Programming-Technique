@@ -1,3 +1,13 @@
+/*
+CS638
+Exercise on Numeric Errors
+
+@author Vishnu Sai Rao Suresh Lokhande (lokhande@cs.wisc.edu)
+
+The desired funtions are "add", "subtract", "multiply" and "divide".
+The corner cases and the other test cases are in "<function>_helper"
+*/
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<limits.h>
