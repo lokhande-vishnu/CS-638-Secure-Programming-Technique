@@ -1,7 +1,17 @@
+/**
+CS638
+Exercise on Command Injection
+
+@author Vishnu Sai Rao Suresh Lokhande (lokhande@cs.wisc.edu)
+Changes in the code pointed out by >>
+
+*/
+
 import java.io.BufferedReader;
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
 
 /**
  * Main execution class for cmd_injection exercise. Prompts user for input to
@@ -34,7 +44,11 @@ public class Main {
 				break;
 
 			try {
-				System.out.println(rDomainName(hostname));
+			    // System.out.println(rDomainName(hostname));
+			    // >> Using Java API
+			    InetAddress inetAddress = InetAddress.getByName(hostname);
+			    System.out.println("Host Name:" + inetAddress.getHostName());
+			    System.out.println("Host Address:" + inetAddress.getHostAddress());
 			} catch (IOException e) {
 				System.out.println("error executing nslookup");
 			}
@@ -52,25 +66,30 @@ public class Main {
 	 *             if unable to execute the command or read its output
 	 */
 	private static String rDomainName(String hostname) throws IOException {
-		// execute the nslookup command
-		String[] cmd = { "/bin/sh", "-c", "nslookup " + hostname };
-		Process proc = Runtime.getRuntime().exec(cmd);
+	    // execute the nslookup command
+	    // >> Using nslookup code
+	    String[] cmd = { "/usr/bin/nslookup", hostname };
+	    Process proc = Runtime.getRuntime().exec(cmd);
+	    
+	    // Old code
+	    // String[] cmd = { "/bin/sh", "-c", "nslookup " + hostname };
+	    // Process proc = Runtime.getRuntime().exec(cmd);
 
-		// capture output from command
-		BufferedReader stdOut = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-		BufferedReader stdErr = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
-
-		StringBuilder output = new StringBuilder();
-		String currLine = null;
-		while ((currLine = stdOut.readLine()) != null) {
-			output.append(currLine + "\n");
-		}
-		while ((currLine = stdErr.readLine()) != null) {
-			output.append(currLine + "\n");
-		}
-
-		// return the result
-		return output.toString();
+	    // capture output from command
+	    BufferedReader stdOut = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+	    BufferedReader stdErr = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+	    
+	    StringBuilder output = new StringBuilder();
+	    String currLine = null;
+	    while ((currLine = stdOut.readLine()) != null) {
+		output.append(currLine + "\n");
+	    }
+	    while ((currLine = stdErr.readLine()) != null) {
+		output.append(currLine + "\n");
+	    }
+	    
+	    // return the result
+	    return output.toString();
 	}
 
 }
