@@ -1,3 +1,14 @@
+/**
+CS638: Secure Programming Techniques
+Exercise on XSS and CSRF
+
+@author VISHNU SAI RAO SURESH LOKHANDE (lokhande@cs.wisc.edu)
+
+Changes are highlighted in yellow
+
+FILE - DoActionServlet.java
+ */
+
 import java.io.IOException;
 
 import javax.servlet.http.HttpServlet;
@@ -27,13 +38,25 @@ public class DoActionServlet extends HttpServlet {
 		HttpSession session = req.getSession(false);
 
 		if (session != null) {
+		    String token_received = (String) req.getParameter("token");
+		    String token_actual = (String) session.getAttribute("token");
+
+		    System.out.println("token actual: "+ token_actual);
+		    System.out.println("token received: " + token_received);
+
+		    if (token_received != null && !token_received.equals("") && token_received.equals(token_actual)) {
+			System.out.println("Token Match");
 			Integer currCount = (Integer) session.getAttribute("clicks");
 			session.setAttribute("clicks", currCount + 1);
 			System.out.println(session.getAttribute("username") + " clicked!");
+		    } else {
+			System.out.println("invalid token");
+			res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid token");
+			return;
+		    }
 		} else {
-			System.out.println("no-session clicked");
+		    System.out.println("no-session clicked");
 		}
-
 		res.sendRedirect("view");
 	}
 }

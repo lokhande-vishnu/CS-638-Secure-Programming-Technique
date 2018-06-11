@@ -1,3 +1,14 @@
+/**
+CS638: Secure Programming Techniques
+Exercise on XSS and CSRF
+
+@author VISHNU SAI RAO SURESH LOKHANDE (lokhande@cs.wisc.edu)
+
+Changes are highlighted in yellow
+
+FILE - ViewPageServlet.java
+ */
+
 import java.io.IOException;
 import java.io.PrintWriter;
 
@@ -57,7 +68,8 @@ public class ViewPageServlet extends HttpServlet {
 			if (! Pattern.matches("[\\p{L}\\p{Digit}_-]+", username)) {
 			    res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid username characters");
 
-			} 
+			}
+			String token = (String) session.getAttribute("token");
 			
 			Integer clickCount = (Integer) session.getAttribute("clicks");
 
@@ -67,13 +79,20 @@ public class ViewPageServlet extends HttpServlet {
 			content.print("!");
 			content.println("</h1>");
 
+			/*
+			content.print("<p>");
+			content.print("Token: ");
+			content.print(token);
+			content.println("</p>");
+			*/
+			
 			content.print("<p>");
 			content.print("You've clicked ");
 			content.print(clickCount);
 			content.print(" times :)!");
 			content.print("</p>");
 
-			content.print("<a href=\"action\">CLICK</a>");
+			content.print("<a href=\"action?token="+token+"\">CLICK</a>");
 
 			
 		}
