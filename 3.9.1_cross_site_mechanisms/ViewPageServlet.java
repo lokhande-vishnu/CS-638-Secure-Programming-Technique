@@ -6,6 +6,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import java.util.regex.*;
+
 /**
  * Display either a form or the current number of registered clicks for a
  * session.
@@ -50,6 +52,13 @@ public class ViewPageServlet extends HttpServlet {
 		} else {
 			// session exists, show button clicker
 			String username = (String) session.getAttribute("username");
+
+			// >> WHITELISTING HERE
+			if (! Pattern.matches("[\\p{L}\\p{Digit}_-]+", username)) {
+			    res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid username characters");
+
+			} 
+			
 			Integer clickCount = (Integer) session.getAttribute("clicks");
 
 			content.print("<h1>");
@@ -61,10 +70,12 @@ public class ViewPageServlet extends HttpServlet {
 			content.print("<p>");
 			content.print("You've clicked ");
 			content.print(clickCount);
-			content.print(" times!");
+			content.print(" times :)!");
 			content.print("</p>");
 
 			content.print("<a href=\"action\">CLICK</a>");
+
+			
 		}
 	}
 }
